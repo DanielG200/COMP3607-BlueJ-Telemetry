@@ -96,7 +96,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
             String packageKey = getPackageKey(blueJClass.getPackage());
             recorder.classRenamed(
                     packageKey,
-                    getOldClassKey(blueJClass, oldName, packageKey),
+                    packageKey + File.separator + oldName,
                     getClassKey(blueJClass),
                     oldName,
                     blueJClass.getName());
@@ -150,33 +150,17 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
-    private File getSourceFile(BClass blueJClass) {
-        try {
-            return blueJClass.getJavaFile();
-        } catch (Exception exception) {
-            return null;
-        }
-    }
-
+    /**
+     * A key that stays the same for the whole life of a class: package folder plus class name.
+     * (The source file path is not used, because BlueJ cannot always provide it.)
+     */
     private String getClassKey(BClass blueJClass) {
-        File sourceFile = getSourceFile(blueJClass);
-        if (sourceFile != null) {
-            return sourceFile.getAbsolutePath();
-        }
+        String className = blueJClass.getName();
         try {
-            return getPackageKey(blueJClass.getPackage()) + File.separator + blueJClass.getName();
+            return getPackageKey(blueJClass.getPackage()) + File.separator + className;
         } catch (Exception exception) {
-            return blueJClass.getName();
+            return className;
         }
-    }
-
-    /** The key the class had before it was renamed. */
-    private String getOldClassKey(BClass blueJClass, String oldName, String packageKey) {
-        File sourceFile = getSourceFile(blueJClass);
-        if (sourceFile != null) {
-            return new File(sourceFile.getParentFile(), oldName + ".java").getAbsolutePath();
-        }
-        return packageKey + File.separator + oldName;
     }
 
     private String getPackageKey(BPackage blueJPackage) throws Exception {
