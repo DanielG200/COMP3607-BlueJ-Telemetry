@@ -1,0 +1,96 @@
+
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>tt.edu.uwi.comp3607</groupId>
+    <artifactId>comp3607-bluej-telemetry</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.11.4</junit.version>
+
+        <bluej.jar.path>/Applications/BlueJ.app/Contents/Java/bluej.jar</bluej.jar.path>
+
+        <javafx.base.jar.path>/Applications/BlueJ.app/Contents/Java/javafx-base-21.0.3-mac-aarch64.jar</javafx.base.jar.path>
+
+        <javafx.graphics.jar.path>/Applications/BlueJ.app/Contents/Java/javafx-graphics-21.0.3-mac-aarch64.jar</javafx.graphics.jar.path>
+    </properties>
+
+    <dependencies>
+
+        <!-- BlueJ Extension API -->
+        <dependency>
+            <groupId>org.bluej</groupId>
+            <artifactId>bluej</artifactId>
+            <version>5.4.1</version>
+            <scope>system</scope>
+            <systemPath>${bluej.jar.path}</systemPath>
+        </dependency>
+
+        <!-- JavaFX Base -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-base</artifactId>
+            <version>21.0.3</version>
+            <scope>system</scope>
+            <systemPath>${javafx.base.jar.path}</systemPath>
+        </dependency>
+
+        <!-- JavaFX Graphics -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-graphics</artifactId>
+            <version>21.0.3</version>
+            <scope>system</scope>
+            <systemPath>${javafx.graphics.jar.path}</systemPath>
+        </dependency>
+
+        <!-- JUnit 5 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.2</version>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>tt.edu.uwi.comp3607.TelemetryExtension</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+        </plugins>
+    </build>
+
+</project>
