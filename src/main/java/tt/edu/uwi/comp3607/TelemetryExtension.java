@@ -2,16 +2,32 @@ package tt.edu.uwi.comp3607;
 
 import bluej.extensions2.BlueJ;
 import bluej.extensions2.Extension;
+import tt.edu.uwi.comp3607.export.Exporter;
+import tt.edu.uwi.comp3607.export.JsonExporter;
+import tt.edu.uwi.comp3607.model.EventFactory;
+import tt.edu.uwi.comp3607.model.EventType;
+import tt.edu.uwi.comp3607.report.ReportAggregator;
+import tt.edu.uwi.comp3607.session.TelemetrySession;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TelemetryExtension extends Extension {
+
+    /** Where the exported JSON / PDF files go. Works on Windows and Mac. */
+    static final Path OUTPUT_DIR = Paths.get(
+            System.getProperty("user.home"), "COMP3607Telemetry");
+
+    private TelemetrySession session;
+    private EventFactory eventFactory;
+    private EditorActivityListener editorActivityListener;
+
+    /** Add the PDF exporter to this list once it exists. */
+    private final List<Exporter> exporters = new ArrayList<>();
 
     @Override
     public boolean isCompatible() {
@@ -21,47 +37,59 @@ public class TelemetryExtension extends Extension {
     @Override
     public void startup(BlueJ bluej) {
 
-        // Register compilation telemetry
-        bluej.addCompileListener(new CompilationListener());
+        session = new TelemetrySession();
+        eventFactory = new EventFactory();
+        session.record(eventFactory.create(EventType.SESSION_STARTED));
 
-        // Register project and class lifecycle telemetry
+        ReportAggregator aggregator = new ReportAggregator();
+        exporters.add(new JsonExporter(aggregator));
+        // exporters.add(new PdfExporter(aggregator));   <- Person C
+
+        // Compilation telemetry (now also feeds the session)
+        bluej.addCompileListener(new CompilationListener(session, eventFactory));
+
+        // Project and class lifecycle telemetry
         LifecycleListener lifecycleListener = new LifecycleListener();
-
         bluej.addPackageListener(lifecycleListener);
         bluej.addClassListener(lifecycleListener);
 
+        // Editor telemetry. This was never started before, so no typing data was collected.
+        editorActivityListener = new EditorActivityListener(bluej);
+        editorActivityListener.start();
+
         System.out.println("COMP3607 Telemetry Extension Loaded");
-        System.out.println("Compilation listener registered!");
-        System.out.println("Lifecycle listener registered!");
+    }
 
-        // Startup diagnostic
-        try {
-            Path logFile = Paths.get(
-                    System.getProperty("user.home"),
-                    "Library",
-                    "Logs",
-                    "COMP3607Telemetry",
-                    "startup.log"
-            );
+    /** Called by BlueJ when it closes: end the session and write the files. */
+    @Override
+    public void terminate() {
 
-            Files.createDirectories(logFile.getParent());
+        if (editorActivityListener != null) {
+            editorActivityListener.close();
+        }
 
-            String message = "Extension startup executed: "
-                    + Instant.now()
-                    + System.lineSeparator();
+        if (session == null) {
+            return;
+        }
 
-            Files.write(
-                    logFile,
-                    message.getBytes(StandardCharsets.UTF_8),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND
-            );
+        session.record(eventFactory.create(EventType.SESSION_ENDED));
+        session.end();
+        exportAll();
+    }
 
-        } catch (IOException exception) {
-            System.err.println(
-                    "[COMP3607 Telemetry] Startup diagnostic failed: "
-                            + exception.getMessage()
-            );
+    /** Writes the session with every exporter. Also usable for a manual "Export" menu item. */
+    void exportAll() {
+        String baseName = "session-" + Instant.now().toString().replace(':', '-');
+
+        for (Exporter exporter : exporters) {
+            Path target = OUTPUT_DIR.resolve(baseName + "." + exporter.fileExtension());
+            try {
+                exporter.export(session, target);
+                System.out.println("[Telemetry] Exported " + target);
+            } catch (IOException exception) {
+                System.err.println("[Telemetry] Export failed for "
+                        + exporter.fileExtension() + ": " + exception.getMessage());
+            }
         }
     }
 

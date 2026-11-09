@@ -2,6 +2,8 @@ package tt.edu.uwi.comp3607;
 
 import bluej.extensions2.event.CompileEvent;
 import bluej.extensions2.event.CompileListener;
+import tt.edu.uwi.comp3607.model.EventFactory;
+import tt.edu.uwi.comp3607.session.TelemetrySession;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,8 +18,12 @@ import java.util.Arrays;
 public class CompilationListener implements CompileListener {
 
     private final Path logFile;
+    private final TelemetrySession session;
+    private final EventFactory eventFactory;
 
-    public CompilationListener() {
+    public CompilationListener(TelemetrySession session, EventFactory eventFactory) {
+        this.session = session;
+        this.eventFactory = eventFactory;
         logFile = Paths.get(
                 System.getProperty("user.home"),
                 "Library",
@@ -30,26 +36,39 @@ public class CompilationListener implements CompileListener {
     @Override
     public void compileStarted(CompileEvent event) {
         logEvent("COMPILATION_STARTED", event);
+        session.record(eventFactory.compileStarted(firstFile(event)));
     }
 
     @Override
     public void compileError(CompileEvent event) {
         logEvent("COMPILATION_ERROR", event);
+        session.record(eventFactory.compileError(
+                firstFile(event), event.getErrorLineNumber(), event.getErrorMessage()));
     }
 
     @Override
     public void compileWarning(CompileEvent event) {
         logEvent("COMPILATION_WARNING", event);
+        session.record(eventFactory.compileWarning(
+                firstFile(event), event.getErrorLineNumber(), event.getErrorMessage()));
     }
 
     @Override
     public void compileSucceeded(CompileEvent event) {
         logEvent("COMPILATION_SUCCEEDED", event);
+        session.record(eventFactory.compileSucceeded(firstFile(event)));
     }
 
     @Override
     public void compileFailed(CompileEvent event) {
         logEvent("COMPILATION_FAILED", event);
+        session.record(eventFactory.compileFailed(firstFile(event)));
+    }
+
+    /** Name of the first file in the compile, or null if BlueJ gave none. */
+    private static String firstFile(CompileEvent event) {
+        File[] files = event.getFiles();
+        return (files == null || files.length == 0) ? null : files[0].getName();
     }
 
     private void logEvent(String eventName, CompileEvent event) {
