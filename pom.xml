@@ -1,4 +1,3 @@
-
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -88,6 +87,57 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <!-- Test coverage report: after "mvn test", open target/site/jacoco/index.html -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <configuration>
+                    <!-- Thin classes that only talk to BlueJ. Their logic lives in tested BlueJ-free classes. -->
+                    <excludes>
+                        <exclude>tt/edu/uwi/comp3607/TelemetryExtension.class</exclude>
+                        <exclude>tt/edu/uwi/comp3607/CompilationListener.class</exclude>
+                        <exclude>tt/edu/uwi/comp3607/LifecycleListener.class</exclude>
+                        <exclude>tt/edu/uwi/comp3607/EditorActivityListener*.class</exclude>
+                        <exclude>tt/edu/uwi/comp3607/ExecutionListener.class</exclude>
+                    </excludes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.75</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
         </plugins>

@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LifecycleRecorder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">comp3607-bluej-telemetry</a> &gt; <a href="index.source.html" class="el_package">tt.edu.uwi.comp3607.tracking</a> &gt; <span class="el_source">LifecycleRecorder.java</span></div><h1>LifecycleRecorder.java</h1><pre class="source lang-java linenums">package tt.edu.uwi.comp3607.tracking;
+
+import tt.edu.uwi.comp3607.model.EventFactory;
+import tt.edu.uwi.comp3607.session.TelemetrySession;
+
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * Turns &quot;what BlueJ told us&quot; about projects, classes and methods into
+ * telemetry events.
+ *
+ * This class knows nothing about BlueJ. LifecycleListener reads the BlueJ
+ * objects and passes plain strings here, so all the decision making
+ * (is this class new? which methods were added?) can be unit tested.
+ */
+public class LifecycleRecorder {
+
+    private final TelemetrySession session;
+    private final EventFactory eventFactory;
+
+    /** Projects we have already reported as opened. */
+<span class="fc" id="L27">    private final Set&lt;String&gt; openProjects = new HashSet&lt;&gt;();</span>
+
+    /** Per package: the classes we already know about. A package is &quot;initialised&quot; once it has an entry. */
+<span class="fc" id="L30">    private final Map&lt;String, Set&lt;String&gt;&gt; knownClasses = new HashMap&lt;&gt;();</span>
+
+    /** Per class: the method signatures seen at the last compile. */
+<span class="fc" id="L33">    private final Map&lt;String, Set&lt;String&gt;&gt; methodSnapshots = new HashMap&lt;&gt;();</span>
+
+    /** Classes created during this session (not present when the project opened). */
+<span class="fc" id="L36">    private final Set&lt;String&gt; createdInSession = new HashSet&lt;&gt;();</span>
+
+<span class="fc" id="L38">    public LifecycleRecorder(TelemetrySession session, EventFactory eventFactory) {</span>
+<span class="fc" id="L39">        this.session = Objects.requireNonNull(session, &quot;session&quot;);</span>
+<span class="fc" id="L40">        this.eventFactory = Objects.requireNonNull(eventFactory, &quot;eventFactory&quot;);</span>
+<span class="fc" id="L41">    }</span>
+
+    // ---------- Projects and packages ----------
+
+    /** Records PROJECT_OPENED the first time a project is seen. */
+    public synchronized void projectOpened(String projectKey, String projectName) {
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (openProjects.add(projectKey)) {</span>
+<span class="fc" id="L48">            session.record(eventFactory.projectOpened(projectName));</span>
+        }
+<span class="fc" id="L50">    }</span>
+
+    /** Records PROJECT_CLOSED once, if the project was reported as opened. */
+    public synchronized void projectClosed(String projectKey, String projectName) {
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        if (openProjects.remove(projectKey)) {</span>
+<span class="fc" id="L55">            session.record(eventFactory.projectClosed(projectName));</span>
+        }
+<span class="fc" id="L57">    }</span>
+
+    /** Starts tracking a package. Classes already in it are NOT reported as created. */
+    public synchronized void beginPackage(String packageKey) {
+<span class="fc" id="L61">        knownClasses.putIfAbsent(packageKey, new HashSet&lt;&gt;());</span>
+<span class="fc" id="L62">    }</span>
+
+    /**
+     * Registers a class that already existed when the package opened.
+     * No events are recorded. The method snapshot (may be null if BlueJ could
+     * not provide one) becomes the baseline for later comparisons.
+     */
+    public synchronized void baselineClass(String packageKey, String classKey, Set&lt;String&gt; methods) {
+<span class="pc" id="L70">        knownClasses.computeIfAbsent(packageKey, key -&gt; new HashSet&lt;&gt;()).add(classKey);</span>
+<span class="fc bfc" id="L71" title="All 2 branches covered.">        if (methods != null) {</span>
+<span class="fc" id="L72">            methodSnapshots.put(classKey, new TreeSet&lt;&gt;(methods));</span>
+        }
+<span class="fc" id="L74">    }</span>
+
+    /** Forgets everything about a package (called when it closes). */
+    public synchronized void packageClosed(String packageKey) {
+<span class="fc" id="L78">        Set&lt;String&gt; classes = knownClasses.remove(packageKey);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">        if (classes != null) {</span>
+<span class="fc bfc" id="L80" title="All 2 branches covered.">            for (String classKey : classes) {</span>
+<span class="fc" id="L81">                methodSnapshots.remove(classKey);</span>
+<span class="fc" id="L82">                createdInSession.remove(classKey);</span>
+<span class="fc" id="L83">            }</span>
+        }
+<span class="fc" id="L85">    }</span>
+
+    // ---------- Classes ----------
+
+    /**
+     * Called whenever BlueJ reports a class state change.
+     *
+     * @param compiled       whether the class is compiled right now
+     * @param currentMethods method signatures when compiled, otherwise null
+     */
+    public synchronized void classChanged(String packageKey, String classKey, String className,
+                                          boolean compiled, Set&lt;String&gt; currentMethods) {
+<span class="fc" id="L97">        Set&lt;String&gt; known = knownClasses.get(packageKey);</span>
+
+<span class="fc bfc" id="L99" title="All 2 branches covered.">        if (known != null) {</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">            if (known.add(classKey)) {</span>
+<span class="fc" id="L101">                createdInSession.add(classKey);</span>
+<span class="fc" id="L102">                session.record(eventFactory.classCreated(className));</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">            } else if (!compiled) {</span>
+                // BlueJ marks a class &quot;not compiled&quot; when its source is edited.
+<span class="fc" id="L105">                session.record(eventFactory.classModified(className));</span>
+            }
+        }
+
+<span class="pc bpc" id="L109" title="1 of 4 branches missed.">        if (compiled &amp;&amp; currentMethods != null) {</span>
+<span class="fc" id="L110">            compareMethods(classKey, className, currentMethods);</span>
+        }
+<span class="fc" id="L112">    }</span>
+
+    public synchronized void classRenamed(String packageKey, String oldKey, String newKey,
+                                          String oldName, String newName) {
+<span class="fc" id="L116">        session.record(eventFactory.classRenamed(oldName, newName));</span>
+
+<span class="fc" id="L118">        Set&lt;String&gt; known = knownClasses.get(packageKey);</span>
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if (known != null) {</span>
+<span class="fc" id="L120">            known.remove(oldKey);</span>
+<span class="fc" id="L121">            known.add(newKey);</span>
+        }
+<span class="fc" id="L123">        Set&lt;String&gt; snapshot = methodSnapshots.remove(oldKey);</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">        if (snapshot != null) {</span>
+<span class="fc" id="L125">            methodSnapshots.put(newKey, snapshot);</span>
+        }
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        if (createdInSession.remove(oldKey)) {</span>
+<span class="fc" id="L128">            createdInSession.add(newKey);</span>
+        }
+<span class="fc" id="L130">    }</span>
+
+    public synchronized void classRemoved(String packageKey, String classKey, String className) {
+<span class="fc" id="L133">        session.record(eventFactory.classRemoved(className));</span>
+
+<span class="fc" id="L135">        Set&lt;String&gt; known = knownClasses.get(packageKey);</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        if (known != null) {</span>
+<span class="fc" id="L137">            known.remove(classKey);</span>
+        }
+<span class="fc" id="L139">        methodSnapshots.remove(classKey);</span>
+<span class="fc" id="L140">        createdInSession.remove(classKey);</span>
+<span class="fc" id="L141">    }</span>
+
+    // ---------- Methods ----------
+
+    private void compareMethods(String classKey, String className, Set&lt;String&gt; current) {
+<span class="fc" id="L146">        Set&lt;String&gt; previous = methodSnapshots.get(classKey);</span>
+
+<span class="fc bfc" id="L148" title="All 4 branches covered.">        if (previous == null &amp;&amp; !createdInSession.contains(classKey)) {</span>
+            // First look at a class that was already there: this is a baseline, not new work.
+<span class="fc" id="L150">            methodSnapshots.put(classKey, new TreeSet&lt;&gt;(current));</span>
+<span class="fc" id="L151">            return;</span>
+        }
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        if (previous == null) {</span>
+<span class="fc" id="L154">            previous = new TreeSet&lt;&gt;();</span>
+        }
+
+<span class="fc bfc" id="L157" title="All 2 branches covered.">        for (String signature : new TreeSet&lt;&gt;(current)) {</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">            if (!previous.contains(signature)) {</span>
+<span class="fc" id="L159">                session.record(eventFactory.methodAdded(className, signature));</span>
+            }
+<span class="fc" id="L161">        }</span>
+<span class="fc bfc" id="L162" title="All 2 branches covered.">        for (String signature : previous) {</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">            if (!current.contains(signature)) {</span>
+<span class="fc" id="L164">                session.record(eventFactory.methodRemoved(className, signature));</span>
+            }
+<span class="fc" id="L166">        }</span>
+<span class="fc" id="L167">        methodSnapshots.put(classKey, new TreeSet&lt;&gt;(current));</span>
+<span class="fc" id="L168">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

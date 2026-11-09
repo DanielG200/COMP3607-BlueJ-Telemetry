@@ -4,6 +4,7 @@ import bluej.extensions2.BlueJ;
 import bluej.extensions2.Extension;
 import tt.edu.uwi.comp3607.export.Exporter;
 import tt.edu.uwi.comp3607.export.JsonExporter;
+import tt.edu.uwi.comp3607.export.PdfExporter;
 import tt.edu.uwi.comp3607.model.EventFactory;
 import tt.edu.uwi.comp3607.model.EventType;
 import tt.edu.uwi.comp3607.report.ReportAggregator;
@@ -26,7 +27,7 @@ public class TelemetryExtension extends Extension {
     private EventFactory eventFactory;
     private EditorActivityListener editorActivityListener;
 
-    /** Add the PDF exporter to this list once it exists. */
+    /** Every output format (JSON and PDF). */
     private final List<Exporter> exporters = new ArrayList<>();
 
     @Override
@@ -43,18 +44,21 @@ public class TelemetryExtension extends Extension {
 
         ReportAggregator aggregator = new ReportAggregator();
         exporters.add(new JsonExporter(aggregator));
-        // exporters.add(new PdfExporter(aggregator));   <- Person C
+        exporters.add(new PdfExporter(aggregator));
 
-        // Compilation telemetry (now also feeds the session)
+        // Compilation telemetry
         bluej.addCompileListener(new CompilationListener(session, eventFactory));
 
         // Project and class lifecycle telemetry
-        LifecycleListener lifecycleListener = new LifecycleListener();
+        LifecycleListener lifecycleListener = new LifecycleListener(session, eventFactory);
         bluej.addPackageListener(lifecycleListener);
         bluej.addClassListener(lifecycleListener);
 
-        // Editor telemetry. This was never started before, so no typing data was collected.
-        editorActivityListener = new EditorActivityListener(bluej);
+        // Execution telemetry (program runs, runtime exceptions)
+        bluej.addInvocationFinishedListener(new ExecutionListener(session, eventFactory));
+
+        // Editor telemetry
+        editorActivityListener = new EditorActivityListener(bluej, session, eventFactory);
         editorActivityListener.start();
 
         System.out.println("COMP3607 Telemetry Extension Loaded");
@@ -86,7 +90,7 @@ public class TelemetryExtension extends Extension {
             try {
                 exporter.export(session, target);
                 System.out.println("[Telemetry] Exported " + target);
-            } catch (IOException exception) {
+            } catch (IOException | RuntimeException exception) {
                 System.err.println("[Telemetry] Export failed for "
                         + exporter.fileExtension() + ": " + exception.getMessage());
             }

@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TelemetrySession.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">comp3607-bluej-telemetry</a> &gt; <a href="index.source.html" class="el_package">tt.edu.uwi.comp3607.session</a> &gt; <span class="el_source">TelemetrySession.java</span></div><h1>TelemetrySession.java</h1><pre class="source lang-java linenums">package tt.edu.uwi.comp3607.session;
+
+import tt.edu.uwi.comp3607.model.EventType;
+import tt.edu.uwi.comp3607.model.TelemetryEvent;
+
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+/**
+ * The single place where all events from one BlueJ session are collected.
+ *
+ * Listeners only call record(...). They never write files themselves,
+ * which keeps each class to one job (Single Responsibility).
+ *
+ * This is the &quot;subject&quot; in the Observer pattern: observers are told
+ * about every new event.
+ */
+public class TelemetrySession {
+
+    public static final String DEFAULT_STUDENT_ID = &quot;STUDENT_ID_PLACEHOLDER&quot;;
+
+    private final String studentId;
+    private final Clock clock;
+    private final Instant startTime;
+    private volatile Instant endTime;
+
+<span class="fc" id="L33">    private final List&lt;TelemetryEvent&gt; events = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L34">    private final List&lt;TelemetryObserver&gt; observers = new CopyOnWriteArrayList&lt;&gt;();</span>
+
+    public TelemetrySession() {
+<span class="fc" id="L37">        this(DEFAULT_STUDENT_ID, Clock.systemUTC());</span>
+<span class="fc" id="L38">    }</span>
+
+<span class="fc" id="L40">    public TelemetrySession(String studentId, Clock clock) {</span>
+<span class="fc bfc" id="L41" title="All 4 branches covered.">        this.studentId = (studentId == null || studentId.isBlank())</span>
+<span class="fc" id="L42">                ? DEFAULT_STUDENT_ID</span>
+<span class="fc" id="L43">                : studentId;</span>
+<span class="fc" id="L44">        this.clock = Objects.requireNonNull(clock, &quot;clock&quot;);</span>
+<span class="fc" id="L45">        this.startTime = clock.instant();</span>
+<span class="fc" id="L46">    }</span>
+
+    /** Adds an event and tells every observer about it. */
+    public void record(TelemetryEvent event) {
+<span class="fc" id="L50">        Objects.requireNonNull(event, &quot;event&quot;);</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">        if (isEnded()) {</span>
+<span class="fc" id="L52">            return; // ignore anything that arrives after shutdown</span>
+        }
+<span class="fc" id="L54">        synchronized (events) {</span>
+<span class="fc" id="L55">            events.add(event);</span>
+<span class="fc" id="L56">        }</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        for (TelemetryObserver observer : observers) {</span>
+            try {
+<span class="fc" id="L59">                observer.onEvent(event);</span>
+<span class="fc" id="L60">            } catch (RuntimeException exception) {</span>
+                // One broken observer must not stop the others or crash BlueJ.
+<span class="fc" id="L62">                System.err.println(&quot;[Telemetry] Observer failed: &quot; + exception.getMessage());</span>
+<span class="fc" id="L63">            }</span>
+<span class="fc" id="L64">        }</span>
+<span class="fc" id="L65">    }</span>
+
+    public void addObserver(TelemetryObserver observer) {
+<span class="fc" id="L68">        observers.add(Objects.requireNonNull(observer, &quot;observer&quot;));</span>
+<span class="fc" id="L69">    }</span>
+
+    public void removeObserver(TelemetryObserver observer) {
+<span class="fc" id="L72">        observers.remove(observer);</span>
+<span class="fc" id="L73">    }</span>
+
+    /** Marks the session as finished. Calling it again has no effect. */
+    public void end() {
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (endTime == null) {</span>
+<span class="fc" id="L78">            endTime = clock.instant();</span>
+        }
+<span class="fc" id="L80">    }</span>
+
+    public boolean isEnded() {
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        return endTime != null;</span>
+    }
+
+    /** A snapshot copy, so callers can loop over it safely. */
+    public List&lt;TelemetryEvent&gt; getEvents() {
+<span class="fc" id="L88">        synchronized (events) {</span>
+<span class="fc" id="L89">            return Collections.unmodifiableList(new ArrayList&lt;&gt;(events));</span>
+        }
+    }
+
+    public List&lt;TelemetryEvent&gt; getEventsOfType(EventType type) {
+<span class="fc" id="L94">        List&lt;TelemetryEvent&gt; matching = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        for (TelemetryEvent event : getEvents()) {</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">            if (event.getType() == type) {</span>
+<span class="fc" id="L97">                matching.add(event);</span>
+            }
+<span class="fc" id="L99">        }</span>
+<span class="fc" id="L100">        return matching;</span>
+    }
+
+    public String getStudentId() {
+<span class="fc" id="L104">        return studentId;</span>
+    }
+
+    public Instant getStartTime() {
+<span class="fc" id="L108">        return startTime;</span>
+    }
+
+    /** The end time, or null while the session is still running. */
+    public Instant getEndTime() {
+<span class="fc" id="L113">        return endTime;</span>
+    }
+
+    /** Time from start to end (or to now, if not ended yet). */
+    public Duration getDuration() {
+<span class="fc bfc" id="L118" title="All 2 branches covered.">        Instant end = endTime != null ? endTime : clock.instant();</span>
+<span class="fc" id="L119">        return Duration.between(startTime, end);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

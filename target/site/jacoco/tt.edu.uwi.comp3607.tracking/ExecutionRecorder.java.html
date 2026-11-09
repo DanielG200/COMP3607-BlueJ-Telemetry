@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExecutionRecorder.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">comp3607-bluej-telemetry</a> &gt; <a href="index.source.html" class="el_package">tt.edu.uwi.comp3607.tracking</a> &gt; <span class="el_source">ExecutionRecorder.java</span></div><h1>ExecutionRecorder.java</h1><pre class="source lang-java linenums">package tt.edu.uwi.comp3607.tracking;
+
+import tt.edu.uwi.comp3607.model.EventFactory;
+import tt.edu.uwi.comp3607.session.TelemetrySession;
+
+import java.util.Objects;
+
+/**
+ * Turns a finished BlueJ invocation (running main, calling a method or
+ * creating an object) into telemetry events.
+ *
+ * BlueJ-free so it can be unit tested. ExecutionListener does the BlueJ part.
+ *
+ * Note: BlueJ's extension API does not expose the exception type or the
+ * program's console output, so the exception is recorded generically and
+ * the console summary only covers a text result when BlueJ provides one.
+ */
+public class ExecutionRecorder {
+
+    public static final String CONSTRUCTOR_NAME = &quot;&lt;constructor&gt;&quot;;
+    public static final String UNKNOWN_EXCEPTION_TYPE = &quot;Exception&quot;;
+    public static final String UNKNOWN_EXCEPTION_MESSAGE =
+            &quot;Invocation ended with an exception (details are not exposed by BlueJ)&quot;;
+
+    private final TelemetrySession session;
+    private final EventFactory eventFactory;
+
+<span class="fc" id="L28">    public ExecutionRecorder(TelemetrySession session, EventFactory eventFactory) {</span>
+<span class="fc" id="L29">        this.session = Objects.requireNonNull(session, &quot;session&quot;);</span>
+<span class="fc" id="L30">        this.eventFactory = Objects.requireNonNull(eventFactory, &quot;eventFactory&quot;);</span>
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * @param className  class that was run
+     * @param methodName method name, or null for a constructor call
+     * @param outcome    how it ended (null is treated as UNKNOWN)
+     * @param resultText any text produced by the call, or null if there was none
+     */
+    public void recordInvocation(String className, String methodName,
+                                 ExecutionOutcome outcome, String resultText) {
+<span class="fc bfc" id="L41" title="All 2 branches covered.">        String method = methodName == null ? CONSTRUCTOR_NAME : methodName;</span>
+<span class="fc" id="L42">        session.record(eventFactory.programRun(className, method));</span>
+
+<span class="fc bfc" id="L44" title="All 2 branches covered.">        if (outcome == ExecutionOutcome.EXCEPTION) {</span>
+<span class="fc" id="L45">            session.record(eventFactory.runtimeException(</span>
+                    className, UNKNOWN_EXCEPTION_TYPE, UNKNOWN_EXCEPTION_MESSAGE));
+        }
+
+<span class="fc bfc" id="L49" title="All 4 branches covered.">        if (resultText != null &amp;&amp; !resultText.isEmpty()) {</span>
+<span class="fc" id="L50">            session.record(eventFactory.consoleOutput(</span>
+<span class="fc" id="L51">                    countLines(resultText), resultText.length()));</span>
+        }
+<span class="fc" id="L53">    }</span>
+
+    /** Number of lines in the text. A trailing line break does not add an empty line. */
+    static int countLines(String text) {
+<span class="fc" id="L57">        int lines = 1;</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        for (int i = 0; i &lt; text.length(); i++) {</span>
+<span class="fc bfc" id="L59" title="All 4 branches covered.">            if (text.charAt(i) == '\n' &amp;&amp; i &lt; text.length() - 1) {</span>
+<span class="fc" id="L60">                lines++;</span>
+            }
+        }
+<span class="fc" id="L63">        return lines;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
