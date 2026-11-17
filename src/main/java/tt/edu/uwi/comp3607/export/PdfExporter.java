@@ -29,11 +29,14 @@ import java.util.Objects;
  */
 public class PdfExporter implements Exporter {
 
+    /** Page margin in points. */
     private static final float MARGIN = 50f;
     private static final float CONTENT_WIDTH = PdfWriter.PAGE_WIDTH - 2 * MARGIN;
     private static final float TOP = PdfWriter.PAGE_HEIGHT - MARGIN;
+    /** Lowest y position content may reach. Below this is the footer. */
     private static final float BOTTOM = 65f;
 
+    // Colours as red, green, blue values from 0 to 1.
     private static final float[] INK = {0.13f, 0.15f, 0.18f};
     private static final float[] MUTED = {0.42f, 0.45f, 0.50f};
     private static final float[] ACCENT = {0.15f, 0.35f, 0.65f};
@@ -44,27 +47,44 @@ public class PdfExporter implements Exporter {
     private static final float[] RULE = {0.80f, 0.82f, 0.86f};
     private static final float[] WHITE = {1f, 1f, 1f};
 
+    /** The error chart shows at most this many different errors. */
     private static final int MAX_ERRORS_IN_CHART = 10;
 
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss", Locale.ROOT);
 
+    /** Supplies every number shown in the report. */
     private final ReportAggregator aggregator;
+    /** Time zone used when printing times in the report. */
     private final ZoneId zone;
 
+    /** Creates an exporter that uses a new aggregator and the computer's time zone. */
     public PdfExporter() {
         this(new ReportAggregator());
     }
 
+    /** Creates an exporter that uses the given aggregator and the computer's time zone. */
     public PdfExporter(ReportAggregator aggregator) {
         this(aggregator, ZoneId.systemDefault());
     }
 
+    /**
+     * Creates an exporter with an explicit time zone, so tests get the same times on every computer.
+     *
+     * @throws NullPointerException if either argument is null
+     */
     public PdfExporter(ReportAggregator aggregator, ZoneId zone) {
         this.aggregator = Objects.requireNonNull(aggregator, "aggregator");
         this.zone = Objects.requireNonNull(zone, "zone");
     }
 
+    /**
+     * Writes the report to a PDF file, creating missing parent folders.
+     *
+     * @param session the session to report on
+     * @param target  the file to write
+     * @throws IOException if the file cannot be written
+     */
     @Override
     public void export(TelemetrySession session, Path target) throws IOException {
         Path parent = target.toAbsolutePath().getParent();
@@ -74,12 +94,17 @@ public class PdfExporter implements Exporter {
         Files.write(target, toBytes(session));
     }
 
+    /** Returns {@code "pdf"}, the extension used for the report file. */
     @Override
     public String fileExtension() {
         return "pdf";
     }
 
-    /** The PDF file content, so tests can check it without touching the disk. */
+    /**
+     * Builds the PDF in memory, so tests can check it without touching the disk.
+     *
+     * @throws NullPointerException if the session is null
+     */
     public byte[] toBytes(TelemetrySession session) {
         Objects.requireNonNull(session, "session");
         return new ReportBuilder(session).build();
@@ -102,6 +127,7 @@ public class PdfExporter implements Exporter {
         return seconds + "s";
     }
 
+    /** Turns a fraction into a percentage with one decimal, so 0.5 becomes "50.0%". */
     static String formatPercent(double fraction) {
         return String.format(Locale.ROOT, "%.1f%%", fraction * 100.0);
     }
@@ -119,12 +145,14 @@ public class PdfExporter implements Exporter {
 
         private final TelemetrySession session;
         private final PdfWriter pdf = new PdfWriter();
+        /** Current drawing height. It starts at the top and moves down as content is added. */
         private float y = TOP;
 
         ReportBuilder(TelemetrySession session) {
             this.session = session;
         }
 
+        /** Draws every section in order, then the page footers, and returns the finished PDF. */
         byte[] build() {
             drawTitle();
             drawOverview();
@@ -138,6 +166,7 @@ public class PdfExporter implements Exporter {
 
         // ----- Sections -----
 
+        /** Draws the blue title bar with the student ID and session start time. */
         private void drawTitle() {
             pdf.fillRect(0, PdfWriter.PAGE_HEIGHT - 88, PdfWriter.PAGE_WIDTH, 88, ACCENT);
             pdf.text(MARGIN, PdfWriter.PAGE_HEIGHT - 45, 22, true, WHITE, "BlueJ Telemetry Report");
@@ -147,6 +176,7 @@ public class PdfExporter implements Exporter {
             y = PdfWriter.PAGE_HEIGHT - 88 - 14;
         }
 
+        /** Draws the table of session start, end, duration, event, edit, class and method counts. */
         private void drawOverview() {
             section("Session overview");
             List<String[]> rows = new ArrayList<>();
@@ -163,6 +193,7 @@ public class PdfExporter implements Exporter {
             table(new String[]{"Measure", "Value"}, new float[]{300, CONTENT_WIDTH - 300}, rows);
         }
 
+        /** Draws a bar splitting the session into active and idle time. */
         private void drawActiveVersusIdle() {
             section("Active coding time vs idle time");
             Duration active = aggregator.activeCodingTime(session);
@@ -188,6 +219,7 @@ public class PdfExporter implements Exporter {
             note("Active time adds up the gaps between edits that are 60 seconds or shorter. Longer gaps count as idle.");
         }
 
+        /** Draws the compilation summary table and the error frequency chart. */
         private void drawCompilation() {
             section("Compilation");
             int attempts = aggregator.totalCompilationAttempts(session);
@@ -210,6 +242,7 @@ public class PdfExporter implements Exporter {
             barChart(frequency);
         }
 
+        /** Draws the table of program runs, runtime exceptions and console output summaries. */
         private void drawExecution() {
             section("Program execution");
             List<String[]> rows = new ArrayList<>();
@@ -220,6 +253,7 @@ public class PdfExporter implements Exporter {
             table(new String[]{"Measure", "Value"}, new float[]{300, CONTENT_WIDTH - 300}, rows);
         }
 
+        /** Draws the table of classes and methods created, with how far into the session each one happened. */
         private void drawTimeline() {
             section("Progression timeline: classes and methods");
             List<TelemetryEvent> timeline = aggregator.progressionTimeline(session);
@@ -244,6 +278,7 @@ public class PdfExporter implements Exporter {
                     new float[]{60, 120, 95, CONTENT_WIDTH - 275}, rows);
         }
 
+        /** Adds the line, report name and "Page n of N" to the bottom of every page. */
         private void drawFooters() {
             int count = pdf.pageCount();
             for (int i = 0; i < count; i++) {
@@ -267,6 +302,7 @@ public class PdfExporter implements Exporter {
             return false;
         }
 
+        /** Draws a section heading with a line under it, starting a new page if there is little room left. */
         private void section(String title) {
             ensure(60);
             y -= 14;
@@ -276,6 +312,7 @@ public class PdfExporter implements Exporter {
             y -= 10;
         }
 
+        /** Draws a smaller heading inside a section. */
         private void subheading(String title) {
             ensure(40);
             y -= 8;
@@ -283,17 +320,20 @@ public class PdfExporter implements Exporter {
             y -= 20;
         }
 
+        /** Draws one line of small grey text, shortened to fit the page width. */
         private void note(String text) {
             ensure(16);
             pdf.text(MARGIN, y - 9, 9, false, MUTED, PdfWriter.fit(text, 9, false, CONTENT_WIDTH));
             y -= 16;
         }
 
+        /** Draws a small coloured square followed by its label. */
         private void legend(float x, float[] color, String label) {
             pdf.fillRect(x, y - 8, 9, 9, color);
             pdf.text(x + 14, y - 7, 9, false, INK, label);
         }
 
+        /** Draws a table with a header row and alternating shaded rows. The header repeats on a new page. */
         private void table(String[] headers, float[] widths, List<String[]> rows) {
             ensure(2 * 20);
             drawTableRow(headers, widths, true, false);
@@ -308,6 +348,7 @@ public class PdfExporter implements Exporter {
             y -= 6;
         }
 
+        /** Draws one table row at the current height and moves down by one row. */
         private void drawTableRow(String[] cells, float[] widths, boolean header, boolean shade) {
             float rowHeight = 20;
             if (header) {

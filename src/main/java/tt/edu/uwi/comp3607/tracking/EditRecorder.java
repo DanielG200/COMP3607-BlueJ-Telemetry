@@ -24,11 +24,28 @@ public class EditRecorder {
     private final EventFactory eventFactory;
     private final Map<String, Long> lastEditMillis = new HashMap<>();
 
+    /**
+     * Creates a recorder that writes its events to the given session.
+     *
+     * @param session      session that receives the DOCUMENT_EDIT events; must not be null
+     * @param eventFactory factory used to build the events; must not be null
+     * @throws NullPointerException if either argument is null
+     */
     public EditRecorder(TelemetrySession session, EventFactory eventFactory) {
         this.session = Objects.requireNonNull(session, "session");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory");
     }
 
+    /**
+     * Records one edit and measures the time since the previous edit of the same class.
+     * Edits to different classes are timed separately.
+     *
+     * @param classKey           unique key of the class, used to look up its previous edit
+     * @param className          class name written into the event
+     * @param insertedCharacters number of characters added by the edit
+     * @param removedCharacters  number of characters deleted by the edit
+     * @param nowMillis          time of the edit in epoch milliseconds, supplied by the caller
+     */
     public synchronized void recordEdit(String classKey, String className,
                                         int insertedCharacters, int removedCharacters,
                                         long nowMillis) {
@@ -44,6 +61,7 @@ public class EditRecorder {
         lastEditMillis.remove(classKey);
     }
 
+    /** Stops tracking every class, so the next edit of each one has no previous edit. */
     public synchronized void clear() {
         lastEditMillis.clear();
     }

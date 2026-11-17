@@ -17,20 +17,35 @@ import java.util.Objects;
  */
 public class ExecutionRecorder {
 
+    /** Method name recorded when BlueJ gives no method name, which means a constructor call. */
     public static final String CONSTRUCTOR_NAME = "<constructor>";
+
+    /** Exception type recorded, because BlueJ does not say which exception was thrown. */
     public static final String UNKNOWN_EXCEPTION_TYPE = "Exception";
+
+    /** Message recorded with every runtime exception, explaining why no details are available. */
     public static final String UNKNOWN_EXCEPTION_MESSAGE =
             "Invocation ended with an exception (details are not exposed by BlueJ)";
 
     private final TelemetrySession session;
     private final EventFactory eventFactory;
 
+    /**
+     * Creates a recorder that writes its events to the given session.
+     *
+     * @param session      session that receives the events; must not be null
+     * @param eventFactory factory used to build the events; must not be null
+     * @throws NullPointerException if either argument is null
+     */
     public ExecutionRecorder(TelemetrySession session, EventFactory eventFactory) {
         this.session = Objects.requireNonNull(session, "session");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory");
     }
 
     /**
+     * Records a finished invocation. Always records PROGRAM_RUN, adds RUNTIME_EXCEPTION when it
+     * ended with an exception, and adds CONSOLE_OUTPUT when it produced non-empty text.
+     *
      * @param className  class that was run
      * @param methodName method name, or null for a constructor call
      * @param outcome    how it ended (null is treated as UNKNOWN)

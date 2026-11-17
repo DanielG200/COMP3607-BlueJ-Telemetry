@@ -17,24 +17,33 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Entry point of the plugin. BlueJ loads this class from the jar. It creates the session, registers
+ * the listeners at startup, and at shutdown ends the session and writes the JSON and PDF files.
+ */
 public class TelemetryExtension extends Extension {
 
     /** Where the exported JSON / PDF files go. Works on Windows and Mac. */
     static final Path OUTPUT_DIR = Paths.get(
             System.getProperty("user.home"), "COMP3607Telemetry");
 
+    /** The one session that collects every event until BlueJ closes. */
     private TelemetrySession session;
+    /** Creates every event with its timestamp. */
     private EventFactory eventFactory;
+    /** Kept so it can be stopped when BlueJ closes. */
     private EditorActivityListener editorActivityListener;
 
     /** Every output format (JSON and PDF). */
     private final List<Exporter> exporters = new ArrayList<>();
 
+    /** Tells BlueJ this extension works with any version. */
     @Override
     public boolean isCompatible() {
         return true;
     }
 
+    /** Called by BlueJ when it starts. Creates the session and exporters and registers every listener. */
     @Override
     public void startup(BlueJ bluej) {
 
@@ -97,16 +106,19 @@ public class TelemetryExtension extends Extension {
         }
     }
 
+    /** Returns the name BlueJ shows in Help, Installed Extensions. */
     @Override
     public String getName() {
         return "COMP3607 Telemetry";
     }
 
+    /** Returns the plugin version shown in Help, Installed Extensions. */
     @Override
     public String getVersion() {
         return "1.0";
     }
 
+    /** Returns the one line description BlueJ shows for this extension. */
     @Override
     public String getDescription() {
         return "Collects BlueJ project, editor, compilation and execution telemetry.";

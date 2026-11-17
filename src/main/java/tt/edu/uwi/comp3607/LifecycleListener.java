@@ -25,10 +25,17 @@ public class LifecycleListener implements PackageListener, ClassListener {
 
     private final LifecycleRecorder recorder;
 
+    /**
+     * Creates a listener that records project and class events in the given session.
+     *
+     * @param session      session that receives the events
+     * @param eventFactory factory used to build the events
+     */
     public LifecycleListener(TelemetrySession session, EventFactory eventFactory) {
         this.recorder = new LifecycleRecorder(session, eventFactory);
     }
 
+    /** Called by BlueJ when a package opens. Records the project as opened and saves its classes as the starting point. */
     @Override
     public void packageOpened(PackageEvent event) {
         BPackage blueJPackage = event.getPackage();
@@ -53,6 +60,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
+    /** Called by BlueJ when a package is about to close. Records the project as closed. */
     @Override
     public void packageClosing(PackageEvent event) {
         BPackage blueJPackage = event.getPackage();
@@ -68,6 +76,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
+    /** Called by BlueJ when a class is created, edited or compiled. Passes its method list along when it is compiled. */
     @Override
     public void classStateChanged(ClassEvent event) {
         BClass blueJClass = event.getBClass();
@@ -85,6 +94,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
+    /** Called by BlueJ when a class is renamed. */
     @Override
     public void classNameChanged(ClassEvent event) {
         BClass blueJClass = event.getBClass();
@@ -105,6 +115,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
+    /** Called by BlueJ when a class is deleted. */
     @Override
     public void classRemoved(ClassEvent event) {
         BClass blueJClass = event.getBClass();
@@ -163,6 +174,11 @@ public class LifecycleListener implements PackageListener, ClassListener {
         }
     }
 
+    /**
+     * Returns a key for the package: its folder path, or its name if BlueJ gives no folder.
+     *
+     * @throws Exception if the package is null
+     */
     private String getPackageKey(BPackage blueJPackage) throws Exception {
         if (blueJPackage == null) {
             throw new Exception("BlueJ package is unavailable.");
@@ -174,6 +190,7 @@ public class LifecycleListener implements PackageListener, ClassListener {
         return blueJPackage.getName();
     }
 
+    /** Prints a short error to the console, so a tracking problem never interrupts BlueJ. */
     private void report(String what, Exception exception) {
         System.err.println("[Telemetry] Lifecycle tracking failed (" + what + "): " + exception.getMessage());
     }
