@@ -115,7 +115,7 @@ public class TelemetrySession {
  *
  * @param event the event to add; can't be {@code null}
  * @throws NullPointerException if {@code event} is {@code null}
- *//
+ */
     public void record(TelemetryEvent event) {
         Objects.requireNonNull(event, "event");
         if (isEnded()) {
