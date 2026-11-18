@@ -35,6 +35,13 @@ public class LifecycleRecorder {
     /** Classes created during this session (not present when the project opened). */
     private final Set<String> createdInSession = new HashSet<>();
 
+    /**
+     * Creates a recorder that writes its events to the given session.
+     *
+     * @param session      session that receives the events; must not be null
+     * @param eventFactory factory used to build the events; must not be null
+     * @throws NullPointerException if either argument is null
+     */
     public LifecycleRecorder(TelemetrySession session, EventFactory eventFactory) {
         this.session = Objects.requireNonNull(session, "session");
         this.eventFactory = Objects.requireNonNull(eventFactory, "eventFactory");
@@ -87,8 +94,13 @@ public class LifecycleRecorder {
     // ---------- Classes ----------
 
     /**
-     * Called whenever BlueJ reports a class state change.
+     * Called whenever BlueJ reports a class state change. Records CLASS_CREATED for a class we have
+     * not seen in this package, CLASS_MODIFIED when a known class stops being compiled (it was edited),
+     * and method changes when the class compiles. Ignored for packages that were never started.
      *
+     * @param packageKey     key of the package the class belongs to
+     * @param classKey       key that stays the same for the life of the class
+     * @param className      class name written into the events
      * @param compiled       whether the class is compiled right now
      * @param currentMethods method signatures when compiled, otherwise null
      */
@@ -111,6 +123,16 @@ public class LifecycleRecorder {
         }
     }
 
+    /**
+     * Records CLASS_RENAMED and moves everything we know about the class to its new key, so a rename
+     * is not mistaken for a new class or for added and removed methods.
+     *
+     * @param packageKey key of the package the class belongs to
+     * @param oldKey     key of the class before the rename
+     * @param newKey     key of the class after the rename
+     * @param oldName    name before the rename
+     * @param newName    name after the rename
+     */
     public synchronized void classRenamed(String packageKey, String oldKey, String newKey,
                                           String oldName, String newName) {
         session.record(eventFactory.classRenamed(oldName, newName));
@@ -129,6 +151,14 @@ public class LifecycleRecorder {
         }
     }
 
+    /**
+     * Records CLASS_REMOVED and forgets the class. If the same key appears again later, it is
+     * treated as a brand new class.
+     *
+     * @param packageKey key of the package the class belonged to
+     * @param classKey   key of the removed class
+     * @param className  class name written into the event
+     */
     public synchronized void classRemoved(String packageKey, String classKey, String className) {
         session.record(eventFactory.classRemoved(className));
 
@@ -142,6 +172,11 @@ public class LifecycleRecorder {
 
     // ---------- Methods ----------
 
+    /**
+     * Compares the current methods with the snapshot from the last compile and records
+     * METHOD_ADDED and METHOD_REMOVED events. The first look at a class that was already there only
+     * saves a baseline and records nothing.
+     */
     private void compareMethods(String classKey, String className, Set<String> current) {
         Set<String> previous = methodSnapshots.get(classKey);
 

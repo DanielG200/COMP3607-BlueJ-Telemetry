@@ -18,7 +18,9 @@ import java.util.Locale;
  */
 public class PdfWriter {
 
+    /** Page width in points (A4). */
     public static final float PAGE_WIDTH = 595f;
+    /** Page height in points (A4). */
     public static final float PAGE_HEIGHT = 842f;
 
     /** Helvetica glyph widths (per 1000 units) for the characters 32 to 126. */
@@ -30,11 +32,15 @@ public class PdfWriter {
             333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
             556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584
     };
+    /** Bold text is about this much wider than regular text, used when measuring. */
     private static final float BOLD_FACTOR = 1.08f;
 
+    /** The drawing commands for each page, in page order. */
     private final List<StringBuilder> pages = new ArrayList<>();
+    /** The page that drawing commands are currently added to. */
     private StringBuilder current;
 
+    /** Creates a writer with one empty page ready to draw on. */
     public PdfWriter() {
         newPage();
     }
@@ -47,11 +53,16 @@ public class PdfWriter {
         pages.add(current);
     }
 
+    /** Returns how many pages the document has so far. */
     public int pageCount() {
         return pages.size();
     }
 
-    /** Switches drawing to an existing page (0 is the first). Used for footers. */
+    /**
+     * Switches drawing to an existing page (0 is the first). Used for footers.
+     *
+     * @throws IllegalArgumentException if there is no page with that index
+     */
     public void selectPage(int index) {
         if (index < 0 || index >= pages.size()) {
             throw new IllegalArgumentException("No page " + index);
@@ -61,6 +72,16 @@ public class PdfWriter {
 
     // ---------- Drawing ----------
 
+    /**
+     * Draws one line of text on the current page. Characters Helvetica cannot show are replaced with '?'.
+     *
+     * @param x    distance from the left edge, in points
+     * @param y    distance from the bottom edge to the text baseline, in points
+     * @param size font size in points
+     * @param bold true for Helvetica Bold
+     * @param rgb  colour as red, green and blue values from 0 to 1
+     * @param text the text to draw
+     */
     public void text(float x, float y, float size, boolean bold, float[] rgb, String text) {
         current.append(color(rgb, false))
                 .append("BT /").append(bold ? "F2" : "F1").append(' ').append(num(size)).append(" Tf ")
@@ -68,12 +89,14 @@ public class PdfWriter {
                 .append(escape(text)).append(") Tj ET\n");
     }
 
+    /** Draws a filled rectangle whose bottom left corner is at (x, y). The colour is red, green, blue from 0 to 1. */
     public void fillRect(float x, float y, float width, float height, float[] rgb) {
         current.append(color(rgb, false))
                 .append(num(x)).append(' ').append(num(y)).append(' ')
                 .append(num(width)).append(' ').append(num(height)).append(" re f\n");
     }
 
+    /** Draws a straight line from (x1, y1) to (x2, y2) with the given thickness in points. */
     public void line(float x1, float y1, float x2, float y2, float lineWidth, float[] rgb) {
         current.append(color(rgb, true))
                 .append(num(lineWidth)).append(" w ")
@@ -180,6 +203,7 @@ public class PdfWriter {
         return clean.toString();
     }
 
+    /** Sanitises the text and adds backslashes before the characters that are special inside a PDF string: ( ) and \. */
     static String escape(String text) {
         return sanitise(text)
                 .replace("\\", "\\\\")
@@ -187,14 +211,17 @@ public class PdfWriter {
                 .replace(")", "\\)");
     }
 
+    /** Returns the PDF colour command: stroke colour for lines when {@code stroke} is true, fill colour otherwise. */
     private static String color(float[] rgb, boolean stroke) {
         return num(rgb[0]) + " " + num(rgb[1]) + " " + num(rgb[2]) + (stroke ? " RG " : " rg ");
     }
 
+    /** Formats a number with two decimals and a dot, whatever the computer's language settings. */
     private static String num(float value) {
         return String.format(Locale.ROOT, "%.2f", value);
     }
 
+    /** Appends the text to the output as ISO-8859-1 bytes, the encoding the PDF file is written in. */
     private static void write(ByteArrayOutputStream out, String text) {
         out.writeBytes(text.getBytes(StandardCharsets.ISO_8859_1));
     }

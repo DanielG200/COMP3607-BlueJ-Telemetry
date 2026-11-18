@@ -31,9 +31,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class EditorActivityListener implements AutoCloseable {
 
+    /** Used to find the open projects and their editors. */
     private final BlueJ bluej;
+    /** Turns each edit into an event. */
     private final EditRecorder recorder;
 
+    /** Background thread that asks for an editor scan every second. */
     private final ScheduledExecutorService scheduler =
             Executors.newSingleThreadScheduledExecutor(task -> {
                 Thread thread = new Thread(task, "Telemetry-Editor-Monitor");
@@ -41,18 +44,28 @@ public class EditorActivityListener implements AutoCloseable {
                 return thread;
             });
 
+    /** True while a scan is waiting for the JavaFX thread, so scans never pile up. */
     private final AtomicBoolean scanQueued = new AtomicBoolean(false);
 
+    /** The editor and listener currently attached for each class, by class key. */
     private final Map<String, EditorRegistration> registrations = new HashMap<>();
 
+    /** True between {@link #start()} and {@link #close()}. */
     private volatile boolean running = false;
 
+    /**
+     * Creates a listener. Nothing is watched until {@link #start()} is called.
+     *
+     * @param bluej        the BlueJ instance, used to find open editors
+     * @param session      session that receives the edit events
+     * @param eventFactory factory used to build the events
+     */
     public EditorActivityListener(BlueJ bluej, TelemetrySession session, EventFactory eventFactory) {
         this.bluej = bluej;
         this.recorder = new EditRecorder(session, eventFactory);
     }
 
-    /** Starts periodic editor discovery. */
+    /** Starts checking for newly opened editors once a second. Does nothing if already started. */
     public void start() {
         if (running) {
             return;
@@ -140,7 +153,7 @@ public class EditorActivityListener implements AutoCloseable {
         removeDeletedClasses(discoveredClasses);
     }
 
-    /** Creates a stable identifier for a class. */
+    /** Returns a key that identifies a class by its project folder, package and name. */
     private String createClassKey(BProject project, BPackage currentPackage, BClass currentClass)
             throws Exception {
         return project.getDir().getAbsolutePath()
@@ -150,7 +163,10 @@ public class EditorActivityListener implements AutoCloseable {
                 + currentClass.getName();
     }
 
-    /** Attaches one document listener to each underlying editor. */
+    /**
+     * Attaches a document listener to the editor if it is not already watched. If the class has a
+     * different editor now, the old listener is removed first.
+     */
     private void registerEditor(String classKey, String className,
                                 JavaEditor javaEditor, Editor underlyingEditor) {
 
@@ -240,6 +256,7 @@ public class EditorActivityListener implements AutoCloseable {
         }
     }
 
+    /** Remembers which editor and listener belong together, so the listener can be removed later. */
     private static class EditorRegistration {
 
         private final JavaEditor javaEditor;
