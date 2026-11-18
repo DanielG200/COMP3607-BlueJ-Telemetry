@@ -15,22 +15,67 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Writes the whole session as one JSON file
+ * Saves a whole session as one JSON file.
+ *
+ * The file has three parts:
+ * <pre>{@code
+ * {
+ *   "schemaVersion": "1.0",
+ *   "session": { studentId, start and end time, totals ... },
+ *   "events":  [ { "timestamp", "type", "details" }, ... ]
+ * }
+ * }</pre>
+ * The session part is a summary at the top, so someone reading the file can see
+ * the main numbers straight away without going through every event. Those
+ * numbers come from {@link ReportAggregator}, the same one the PDF uses, so both
+ * files always agree.
+ *
+ * This is one of the two strategies for {@link Exporter} (the other is
+ * {@link PdfExporter}). It's made in TelemetryExtension at startup, and
+ * {@link #export(TelemetrySession, Path)} is called when BlueJ closes.
+ *
+ * @author Kirese Tasha Maharaj
+ * @see JsonWriter
+ * @see ReportAggregator
  */
 public class JsonExporter implements Exporter {
 
+/**
+ * The version of our JSON layout. If we ever change the layout, we'd bump this
+ * so anything reading the file knows what to expect.
+ */
     public static final String SCHEMA_VERSION = "1.0";
 
+/** Works out the summary numbers for the session part of the file. */
     private final ReportAggregator aggregator;
 
+/** Makes an exporter with its own {@link ReportAggregator} using the default settings. */
     public JsonExporter() {
         this(new ReportAggregator());
     }
 
+/**
+ * Makes an exporter that uses the aggregator you give it. TelemetryExtension
+ * passes the same aggregator to the PDF exporter too, so both files use the
+ * same numbers.
+ *
+ * @param aggregator what to use for the summary numbers; can't be {@code null}
+ * @throws NullPointerException if {@code aggregator} is {@code null}
+ */
     public JsonExporter(ReportAggregator aggregator) {
         this.aggregator = Objects.requireNonNull(aggregator, "aggregator");
     }
 
+/**
+ * Saves the session as a JSON file using UTF-8.
+ *
+ * Side effects: creates any missing folders in the path, and replaces an
+ * existing file with the same name.
+ *
+ * @param session the session to save
+ * @param target  where to save the file
+ * @throws IOException if the folders or the file can't be written
+ */
     @Override
     public void export(TelemetrySession session, Path target) throws IOException {
         Path parent = target.toAbsolutePath().getParent();
@@ -40,12 +85,19 @@ public class JsonExporter implements Exporter {
         Files.writeString(target, toJson(session), StandardCharsets.UTF_8);
     }
 
+/** Returns {@code "json"}. */
     @Override
     public String fileExtension() {
         return "json";
     }
 
-    /** The JSON text, so tests can check it without touching the disk. */
+/**
+ * Returns the JSON text for a session without saving it. export uses this, and
+ * it's also handy in tests because we can check the text without creating a file.
+ *
+ * @param session the session to turn into JSON
+ * @return the full JSON text for the file
+ */
     public String toJson(TelemetrySession session) {
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("schemaVersion", SCHEMA_VERSION);
@@ -54,6 +106,15 @@ public class JsonExporter implements Exporter {
         return JsonWriter.toJson(root);
     }
 
+/**
+ * Builds the session summary part of the file: the student ID, start and end
+ * times, session length, active and idle time, and the totals for edits,
+ * compiles, classes, methods and runs. All times ending in Ms are in
+ * milliseconds.
+ *
+ * @param session the session to summarise
+ * @return the summary as an ordered map, ready to turn into JSON
+ */
     private Map<String, Object> buildSessionMetadata(TelemetrySession session) {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("studentId", session.getStudentId());
@@ -76,6 +137,14 @@ public class JsonExporter implements Exporter {
         return meta;
     }
 
+
+/**
+ * Builds the events part of the file: every event in the order it happened,
+ * each with its timestamp, type and details.
+ *
+ * @param session the session whose events we want
+ * @return one map per event, ready to turn into JSON
+ */
     private List<Object> buildEvents(TelemetrySession session) {
         List<Object> list = new ArrayList<>();
         for (TelemetryEvent event : session.getEvents()) {
@@ -88,6 +157,14 @@ public class JsonExporter implements Exporter {
         return list;
     }
 
+
+/**
+ * Rounds a number to 4 decimal places so the JSON doesn't show things like
+ * 0.3333333333333. For eg, 1 out of 3 becomes 0.3333.
+ *
+ * @param value the number to round
+ * @return the rounded number
+ */
     private static double round(double value) {
         return Math.round(value * 10_000.0) / 10_000.0;
     }
