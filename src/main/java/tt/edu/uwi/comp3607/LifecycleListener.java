@@ -20,9 +20,13 @@ import java.util.TreeSet;
  * BlueJ adapter for project and class lifecycle events. It reads the BlueJ
  * objects and hands plain values to LifecycleRecorder, which records the
  * events through the shared TelemetrySession.
+ *
+ * @author Daniel Goodridge
+ * @author Raymond Sookdeo
  */
 public class LifecycleListener implements PackageListener, ClassListener {
 
+    /** Records project and class lifecycle events through the shared session. */
     private final LifecycleRecorder recorder;
 
     /**

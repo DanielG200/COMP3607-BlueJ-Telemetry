@@ -28,6 +28,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * BlueJ adapter for editor telemetry. It finds open editors and attaches a
  * document listener to each. The edits go to EditRecorder, which records
  * them in the shared TelemetrySession. Source code is never recorded.
+ *
+ * @author Daniel Goodridge
+ * @author Raymond Sookdeo
  */
 public class EditorActivityListener implements AutoCloseable {
 
@@ -259,10 +262,22 @@ public class EditorActivityListener implements AutoCloseable {
     /** Remembers which editor and listener belong together, so the listener can be removed later. */
     private static class EditorRegistration {
 
+        /** The BlueJ Java editor being watched. */
         private final JavaEditor javaEditor;
+
+        /** The underlying Swing editor component. */
         private final Editor underlyingEditor;
+
+        /** The document listener attached to the editor. */
         private final DocumentListener documentListener;
 
+        /**
+         * Creates a registration linking an editor with its document listener.
+         *
+         * @param javaEditor         the BlueJ Java editor
+         * @param underlyingEditor   the underlying Swing editor component
+         * @param documentListener   the listener attached to the editor
+         */
         private EditorRegistration(JavaEditor javaEditor, Editor underlyingEditor,
                                    DocumentListener documentListener) {
             this.javaEditor = javaEditor;

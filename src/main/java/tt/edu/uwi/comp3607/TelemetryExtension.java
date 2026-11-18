@@ -20,6 +20,10 @@ import java.util.List;
 /**
  * Entry point of the plugin. BlueJ loads this class from the jar. It creates the session, registers
  * the listeners at startup, and at shutdown ends the session and writes the JSON and PDF files.
+ *
+ * @author Daniel Goodridge
+ * @author Kirese Tasha Maharaj
+ * @author Raymond Sookdeo
  */
 public class TelemetryExtension extends Extension {
 

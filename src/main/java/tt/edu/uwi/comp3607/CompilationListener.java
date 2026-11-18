@@ -15,12 +15,31 @@ import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.util.Arrays;
 
+/**
+ * Listens for BlueJ compilation events. Records each compile start, error,
+ * warning, success and failure in the telemetry session, and appends a plain
+ * text log entry with the compile details.
+ *
+ * @author Daniel Goodridge
+ * @author Kirese Tasha Maharaj
+ */
 public class CompilationListener implements CompileListener {
 
+    /** Path to the compilation log file in the user's library logs folder. */
     private final Path logFile;
+
+    /** Session that receives the compile events. */
     private final TelemetrySession session;
+
+    /** Factory used to build the telemetry events. */
     private final EventFactory eventFactory;
 
+    /**
+     * Creates the listener and sets the log file location.
+     *
+     * @param session      session that receives the compile events
+     * @param eventFactory factory used to build the events
+     */
     public CompilationListener(TelemetrySession session, EventFactory eventFactory) {
         this.session = session;
         this.eventFactory = eventFactory;
@@ -33,12 +52,14 @@ public class CompilationListener implements CompileListener {
         );
     }
 
+    /** Records that a compilation started for the given file. */
     @Override
     public void compileStarted(CompileEvent event) {
         logEvent("COMPILATION_STARTED", event);
         session.record(eventFactory.compileStarted(firstFile(event)));
     }
 
+    /** Records that a compilation error occurred on the given line. */
     @Override
     public void compileError(CompileEvent event) {
         logEvent("COMPILATION_ERROR", event);
@@ -46,6 +67,7 @@ public class CompilationListener implements CompileListener {
                 firstFile(event), event.getErrorLineNumber(), event.getErrorMessage()));
     }
 
+    /** Records that a compilation warning occurred on the given line. */
     @Override
     public void compileWarning(CompileEvent event) {
         logEvent("COMPILATION_WARNING", event);
@@ -53,12 +75,14 @@ public class CompilationListener implements CompileListener {
                 firstFile(event), event.getErrorLineNumber(), event.getErrorMessage()));
     }
 
+    /** Records that a compilation succeeded. */
     @Override
     public void compileSucceeded(CompileEvent event) {
         logEvent("COMPILATION_SUCCEEDED", event);
         session.record(eventFactory.compileSucceeded(firstFile(event)));
     }
 
+    /** Records that a compilation failed. */
     @Override
     public void compileFailed(CompileEvent event) {
         logEvent("COMPILATION_FAILED", event);
@@ -71,6 +95,7 @@ public class CompilationListener implements CompileListener {
         return (files == null || files.length == 0) ? null : files[0].getName();
     }
 
+    /** Appends a plain text log entry with the compile event details. */
     private void logEvent(String eventName, CompileEvent event) {
 
         StringBuilder record = new StringBuilder();
