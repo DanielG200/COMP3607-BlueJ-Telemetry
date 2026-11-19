@@ -15,6 +15,8 @@ import java.util.Locale;
  * valid PDF bytes; PdfExporter decides what to draw (Single Responsibility).
  *
  * Coordinates are in points, with (0, 0) at the bottom left of the page.
+ *
+ * @author Raymond Sookdeo
  */
 public class PdfWriter {
 

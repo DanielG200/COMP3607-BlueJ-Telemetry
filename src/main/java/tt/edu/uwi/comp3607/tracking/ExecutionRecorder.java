@@ -14,6 +14,8 @@ import java.util.Objects;
  * Note: BlueJ's extension API does not expose the exception type or the
  * program's console output, so the exception is recorded generically and
  * the console summary only covers a text result when BlueJ provides one.
+ *
+ * @author Raymond Sookdeo
  */
 public class ExecutionRecorder {
 

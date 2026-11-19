@@ -26,6 +26,8 @@ import java.util.Objects;
  *
  * Sections: session overview, active vs idle time, compilation summary and
  * error frequency, execution summary, and the class/method progression timeline.
+ *
+ * @author Raymond Sookdeo
  */
 public class PdfExporter implements Exporter {
 

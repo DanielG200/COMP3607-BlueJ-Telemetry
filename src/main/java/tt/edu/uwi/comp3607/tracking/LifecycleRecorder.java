@@ -17,6 +17,8 @@ import java.util.TreeSet;
  * This class knows nothing about BlueJ. LifecycleListener reads the BlueJ
  * objects and passes plain strings here, so all the decision making
  * (is this class new? which methods were added?) can be unit tested.
+ *
+ * @author Raymond Sookdeo
  */
 public class LifecycleRecorder {
 

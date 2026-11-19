@@ -10,6 +10,8 @@ import tt.edu.uwi.comp3607.tracking.ExecutionRecorder;
 /**
  * Listens for finished program runs and method calls in BlueJ and passes
  * them to ExecutionRecorder. This class is only the BlueJ adapter.
+ *
+ * @author Raymond Sookdeo
  */
 public class ExecutionListener implements InvocationFinishedListener {
 

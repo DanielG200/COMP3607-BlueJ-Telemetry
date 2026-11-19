@@ -14,6 +14,8 @@ import java.util.Objects;
  * BlueJ-free so it can be unit tested. The editor listener passes in the
  * current time, which keeps this class deterministic in tests.
  * Source code itself is never recorded, only character counts.
+ *
+ * @author Raymond Sookdeo
  */
 public class EditRecorder {
 
